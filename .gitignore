@@ -37,3 +37,10 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# DS_Store files created on macOS
+.DS_Store
+
+# `data/` and `assets/` folders in the current project
+data/
+assets/
