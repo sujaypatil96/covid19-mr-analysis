@@ -5,7 +5,7 @@ setwd("~/Desktop/pm570_project/covid19-colocalization-analysis/")
 
 
 
-gwas <- read_table2(file = "../covid19-colocalization-analysis/data/hosp_vs_pop_23andMe_10K.gz")
+gwas <- read_table2(file = "../covid19-colocalization-analysis/data/hosp_vs_pop_GWAS")
 
 eqtl <- read.table(file = "../covid19-colocalization-analysis/data/eQTL_spQTL_results/BLUEPRINT_eQTL/Monocyte.txt.gz",
                    header = T,
@@ -20,7 +20,7 @@ eqtl <- eqtl %>% tibble()
 #gwas <- gwas %>% mutate(P=all_inv_var_meta_p) 
 gwas <- rename(gwas, P = all_inv_var_meta_p, CHR='#CHR')
 
-sorted_filtered_gwas <- gwas %>% filter(P < .05) %>% arrange(P)
+sorted_filtered_gwas <- gwas %>% filter(P < .5) %>% arrange(P)
 
 
 filter_snp <- function(gwas) {
@@ -46,7 +46,7 @@ filter_snp <- function(gwas) {
 }
 
 
-filter_snp(chr_gwas <- sorted_filtered_gwas %>% filter(CHR == 5))
+#filter_snp(chr_gwas <- sorted_filtered_gwas %>% filter(CHR == 5))
 
 filtered_gwas_list <- lapply(sorted_filtered_gwas$CHR %>% unique() %>% sort(),
                         FUN = function(i) {filter_snp(sorted_filtered_gwas 
@@ -59,8 +59,11 @@ filtered_gwas <- filtered_gwas_list %>% bind_rows()
 
 filtered_gwas["sid"] <- paste(filtered_gwas$CHR, filtered_gwas$POS, sep = ":")
 
+
+gwas["sid"] <- paste(gwas$CHR, gwas$POS, sep = ":")
+
 input <- merge(x = eqtl,
-               y = filtered_gwas,
+               y = gwas,
                by = "sid",
                all = F,
                suffixes = c("_eqtl", "gwas"))
@@ -69,10 +72,27 @@ input <- merge(x = eqtl,
 # next step is colocalizing the eqtl
 
 
+result <- coloc.abf(dataset1 = filtered_gwas, dataset2 = eqtl, MAF = filtered_gwas$all_meta_AF)
+
+result <- coloc.abf(dataset1 = filtered_gwas, dataset2 = eqtl, MAF = filtered_gwas$all_meta_AF)
 
 
-result <- coloc.abf(dataset1 = list(pvalues=input$P, type="cc", s=0.005, N=nrow(filtered_gwas)),
+
+
+
+
+result <- coloc.abf(dataset1 = list(pvalues=filtered_gwas$P, MAF=filtered_gwas$all_meta_AF, type="cc", s=0.005, N=nrow(filtered_gwas)),
+                    dataset2 = list(pvalues=eqtl$npval, type="quant", N=nrow(eqtl)))
+
+
+result$summary
+
+
+
+result <- coloc.abf(dataset1 = list(pvalues=input$P, type="cc", s=0.005, N=nrow(gwas)),
                     dataset2 = list(pvalues=input$npval, type="quant", N=nrow(eqtl)), MAF=input$all_meta_AF)
+
+
 result$summary
 
 
