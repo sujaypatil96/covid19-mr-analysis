@@ -6,8 +6,12 @@ setwd(dir = "C:\\Users/sujay/Desktop/USC Assignments and Material/PM570/Final Pr
 
 # install.packages("tidyverse")
 
+# install.packages("devtools")
+# devtools::install_github("boxiangliu/locuscomparer")
+
 library(tidyverse)
 library(coloc)
+library(locuscomparer)
 
 # read in eQTL data
 eqtl <- read.table(file = "../data/eQTL_spQTL_results/BLUEPRINT_eQTL/Monocyte.txt",
@@ -19,7 +23,6 @@ head(eqtl)
 # read in GWAS data, `nrows` argument added for circumventing memory constraints
 gwas <- read.table(file = "../data/COVID19_HGI_B2_ALL_eur_leave_23andme_20201020.txt",
                    header = T,
-                   nrows = 1000000,
                    as.is = T)
 
 head(gwas)
@@ -57,7 +60,10 @@ filtered_gwas_list <- lapply(sorted_filtered_gwas$CHR %>% unique() %>% sort(),
 filtered_gwas <- filtered_gwas_list %>% bind_rows()
 
 # create column in "chromsome:position" format to match eQTL and GWAS datasets on
-gwas["sid"] <- paste(gwas$CHR, gwas$POS, sep = ":")     
+gwas["sid"] <- paste(gwas$CHR, gwas$POS, sep = ":")
+
+# add MAF column to gwas dataset
+gwas$all_meta_MAF <- (1 - gwas$all_meta_AF)
 
 # match eQTL and GWAS datasets
 input <- merge(x = eqtl,
@@ -71,7 +77,13 @@ head(input)
 # proportion = no. of cases/no. of controls
 s_gwas <- 6404/902088
 
-result <- coloc.abf(dataset1 = list(pvalues=input$all_inv_var_meta_p, type="cc", s=s_gwas, N=input$all_meta_sample_N),
-                    dataset2 = list(pvalues=input$npval, type="quant", N=nrow(eqtl)), MAF=input$all_meta_AF)
+result <- coloc.abf(dataset1 = list(pvalues=input$all_inv_var_meta_p, type="cc", s=s_gwas, N=nrow(gwas)),
+                    dataset2 = list(pvalues=input$npval, type="quant", N=nrow(eqtl)), MAF=input$all_meta_MAF)
 
-result$summary
+# visualization using locuscomparer
+gwas_fn <- "../data/COVID19_HGI_B2_ALL_eur_leave_23andme_20201020.txt"
+eqtl_fn <- "../data/eQTL_spQTL_results/BLUEPRINT_eQTL/Monocyte.txt"
+marker_col <- "sid"
+
+locuscompare(in_fn1 = gwas_fn, in_fn2 = eqtl_fn, title1 = "GWAS", title2 = "eQTL", marker_col1 = marker_col, 
+             pval_col1 = "all_inv_var_meta_p", marker_col2 = marker_col, pval_col2 = "npval")
