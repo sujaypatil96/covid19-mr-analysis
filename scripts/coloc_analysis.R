@@ -46,7 +46,7 @@ filter_snp <- function(gwas) {
 }
 
 
-#filter_snp(chr_gwas <- sorted_filtered_gwas %>% filter(CHR == 5))
+# thin snps to 1mb space between each of them with highest significance first 
 
 filtered_gwas_list <- lapply(sorted_filtered_gwas$CHR %>% unique() %>% sort(),
                         FUN = function(i) {filter_snp(sorted_filtered_gwas 
@@ -58,7 +58,6 @@ filtered_gwas <- filtered_gwas_list %>% bind_rows()
 
 
 filtered_gwas["sid"] <- paste(filtered_gwas$CHR, filtered_gwas$POS, sep = ":")
-
 
 gwas["sid"] <- paste(gwas$CHR, gwas$POS, sep = ":")
 
@@ -98,3 +97,9 @@ result$summary
 
 
 
+
+
+
+g <- matrix(c(0,1,1,1/2,1,1,1,1,1), 3, 3)
+g_scale <- scale(g)
+ld = g_scale %*% t(g_scale)
