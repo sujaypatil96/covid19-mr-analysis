@@ -41,6 +41,5 @@ vignettes/*.pdf
 # DS_Store files created on macOS
 .DS_Store
 
-# `data/` and `assets/` folders in the current project
-data/
+# `data/` folders in the current project
 assets/
