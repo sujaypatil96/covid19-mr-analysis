@@ -4,17 +4,21 @@ setwd(dir = "C:\\Users/sujay/Desktop/USC Assignments and Material/PM570/Final Pr
 # BiocManager::install("snpStats")
 # install("coloc")
 
-# install.packages("tidyverse")
-
 # install.packages("devtools")
 # devtools::install_github("boxiangliu/locuscomparer")
+
+# install.packages("tidyverse")
+# install.packages("metafor")
+# install.packages("qqman")
 
 library(tidyverse)
 library(coloc)
 library(locuscomparer)
+library(metafor)
+library(qqman)
 
 # read in eQTL data
-eqtl <- read.table(file = "../data/eQTL_spQTL_results/BLUEPRINT_eQTL/Monocyte.txt",
+eqtl <- read.table(file = "../data/eQTL_spQTL_results/BLUEPRINT_eQTL/T-cell.txt",
                    header = T,
                    as.is = T)
 
@@ -74,16 +78,34 @@ input <- merge(x = eqtl,
 
 head(input)
 
-# proportion = no. of cases/no. of controls
-s_gwas <- 6404/902088
+MR_df <- input %>% mutate(MR.est = all_inv_var_meta_beta / slope,
+                          MR.se = all_inv_var_meta_sebeta / slope,
+                          MR.z = MR.est / MR.se,
+                          MR.p = 2 * pnorm(-abs(MR.z)))
 
-result <- coloc.abf(dataset1 = list(pvalues=input$all_inv_var_meta_p, type="cc", s=s_gwas, N=nrow(gwas)),
-                    dataset2 = list(pvalues=input$npval, type="quant", N=nrow(eqtl)), MAF=input$all_meta_MAF)
+forest(
+    MR_df$MR.est,
+    sei = MR_df$MR.se,
+    slab = sprintf("    %s", MR_df$pid),
+    xlab = "Causal Effect",
+    annotate = FALSE,
+    ilab = data.frame(
+        sprintf("%.2f", exp(MR_df$MR.est)),
+        sprintf("(%.2f, %.2f)", exp(MR_df$MR.est - MR_df$MR.z * MR_df$MR.se), exp(MR_df$MR.est + MR_df$MR.z * MR_df$MR.se)),
+        sprintf("%.2e", MR_df$MR.p)),
+    ilab.xpos = c(3, 3.5, 4.25),
+    pch = 16,
+    atransf = exp,
+    at = log(c(0.5, 1, 2, 4, 8)),
+    xlim = c(-2, 4.5)
+)
 
-# visualization using locuscomparer
-gwas_fn <- "../data/COVID19_HGI_B2_ALL_eur_leave_23andme_20201020.txt"
-eqtl_fn <- "../data/eQTL_spQTL_results/BLUEPRINT_eQTL/Monocyte.txt"
-marker_col <- "sid"
+data_manhattan <- data.frame(SNP=MR_df$pid,
+                             CHR=MR_df$CHR,
+                             BP=MR_df$POS,
+                             P=MR_df$MR.p,
+                             zscore=MR_df$MR.z)
 
-locuscompare(in_fn1 = gwas_fn, in_fn2 = eqtl_fn, title1 = "GWAS", title2 = "eQTL", marker_col1 = marker_col, 
-             pval_col1 = "all_inv_var_meta_p", marker_col2 = marker_col, pval_col2 = "npval")
+manhattan(data_manhattan, main="Manhattan Plot - T-cells", 
+          col = c("blue4", "orange3"), 
+          suggestiveline = F, genomewideline = -log10(0.05))
