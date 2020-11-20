@@ -1,1 +1,1 @@
-# Statistical Colocalization Analysis of COVID19-HGI data
+# Mendelian Randomization Analysis of COVID19-HGI data
